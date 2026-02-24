@@ -13,21 +13,77 @@ class Slidezy{
             loop: true // Slide có lặp lại hay không
         }, options);
 
+        this.index = 0;
+        this.timer = null;
+
+        this._createBuild();
+
         this.track = this.container.querySelector('.slidezy-track'); // Thẻ chứa các slide
         this.slides = this.container.querySelectorAll('.slidezy-slide');
+            this.prevBtn = this.container.querySelector('.slidezy-prev');
+        this.nextBtn = this.container.querySelector('.slidezy-next');
+        this.dots = this.container.querySelectorAll('.slidezy-dot');
         
         if(this.options.loop){
             this._setupCloneSlides(); // Thiết lập các slide clone để tạo hiệu ứng loop mượt mà
         }
 
-        this.prevBtn = this.container.querySelector('.slidezy-prev');
-        this.nextBtn = this.container.querySelector('.slidezy-next');
-        this.dots = this.container.querySelectorAll('.slidezy-dot');
-        this.index = 0;
-        this.timer = null;
-
         this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
+        
         this._init();
+    }
+
+    _createBuild() {
+        // Thêm class cho container
+        this.container.classList.add('slidezy');
+
+        // Tạo wrapper chứa các slide
+        const content = document.createElement('div');
+        content.classList.add('slidezy-content');
+        
+        const track = document.createElement('div');
+        track.classList.add('slidezy-track');
+
+        const slides = Array.from(this.container.children);
+        slides.forEach(slide => {
+            slide.classList.add('slidezy-slide');
+            track.appendChild(slide);
+        })
+
+        // Clear container và thêm lại nội dung đã được bọc trong track
+        this.container.innerHTML = '';
+
+        // Gắn lại structure mới vào container
+        content.appendChild(track);
+        this.container.appendChild(content);
+
+        // Tạo nút điều khiển Prev / Next
+        
+        const prevBtn = document.createElement('button');
+        prevBtn.classList.add('slidezy-prev');
+        prevBtn.innerHTML = '&#10094;'; // Biểu tượng mũi tên trái
+
+        const nextBtn = document.createElement('button');
+        nextBtn.classList.add('slidezy-next');
+        nextBtn.innerHTML = '&#10095;'; // Biểu tượng mũi tên phải
+
+        content.appendChild(prevBtn);
+        content.appendChild(nextBtn);
+
+        // Tao dot navigation
+        const dotsContainer = document.createElement('div');
+        dotsContainer.classList.add('slidezy-nav');
+
+        slides.forEach((_, index) => {
+            const dot = document.createElement('span');
+            dot.classList.add('slidezy-dot');
+            if(index === 0) {
+                dot.classList.add('active');
+            }
+            dotsContainer.appendChild(dot);
+        })
+
+        this.container.appendChild(dotsContainer);
     }
 
     // Khởi tạo
@@ -93,9 +149,9 @@ class Slidezy{
         if(this.options.loop) {
             realIndex = this.index - 1;
             if(realIndex < 0){
-                realIndex = this.slides.length - 1; // Trường hợp đang ở clone đầu tiên
+                realIndex = this.dots.length - 1; // Trường hợp đang ở clone đầu tiên
             }
-            if(realIndex >= this.slides.length ){
+            if(realIndex >= this.dots.length ){
                 realIndex = 0; // Trường hợp đang ở clone cuối cùng
             }
         }
