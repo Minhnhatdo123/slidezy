@@ -11,28 +11,21 @@
                 transitionDuration: 500, // Thời gian chuyển đổi giữa các slide (ms)
                 autoplay: true, // Slide tự chạy hay không
                 loop: true, // Slide có lặp lại hay không
-                items:1 // Số lượng slide hiển thị cùng lúc
+                items:1, // Số lượng slide hiển thị cùng lúc
+                step:null // Số lượng slide di chuyển mỗi lần
             }, options);
+
+            if(this.options.step === null) {
+                this.options.step = this.options.items; // Mặc định di chuyển bằng số lượng items hiển thị
+            }
 
             this.index = 0;
             this.timer = null; // Biến lưu trữ timer cho autoplay
+            this.isAnimating = false; // Biến để kiểm tra xem slider đang trong quá trình chuyển đổi hay không
+            this.dotHandlers = []; // Biến lưu trữ handler cho sự kiện click trên dot navigation
 
             this._createBuild();
-
-            this.track = this.container.querySelector('.slidezy-track'); // Thẻ chứa các slide
-            this.slides = this.container.querySelectorAll('.slidezy-slide');
-            this.prevBtn = this.container.querySelector('.slidezy-prev');
-            this.nextBtn = this.container.querySelector('.slidezy-next');
-            this.dots = this.container.querySelectorAll('.slidezy-dot');
-            
-            // Thiết lập các slide clone nếu loop được bật
-            if(this.options.loop){
-                this._setupCloneSlides(); // Thiết lập các slide clone để tạo hiệu ứng loop mượt mà
-            }
-
-            this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
-            
-            this._setSlidesStyle(); // Thiết lập style cho các slide dựa trên số lượng items
+            this._cacheElements(); // Lưu trữ các phần tử cần thiết để dễ dàng truy cập sau này                
             this._init(); // Khởi tạo sự kiện và cập nhật slider
         }
 
@@ -54,7 +47,7 @@
             })
 
             // Xóa sạch container và thêm nội dung mới vào container
-            this.container.innerHTML = '';
+            this.container.replaceChildren(content);
 
             // Gắn lại structure mới vào container
             content.appendChild(track);
@@ -77,6 +70,7 @@
             const dotsContainer = document.createElement('div');
             dotsContainer.classList.add('slidezy-nav');
 
+            // Tính số lượng dot cần tạo dựa trên số lượng slide và số lượng items hiển thị cùng lúc
             const totalSlides = Math.max(slides.length - this.options.items + 1, 1); // Số lượng dot cần tạo
 
             for(let i = 0; i < totalSlides; i++) {
@@ -89,67 +83,103 @@
             this.container.appendChild(dotsContainer);
         }
 
+        _cacheElements() {
+            this.track = this.container.querySelector('.slidezy-track'); // Thẻ chứa các slide
+            this.slides = this.container.querySelectorAll('.slidezy-slide');
+            // Đảm bảo số lượng items không vượt quá số lượng slide thực tế
+            this.options.items = Math.min(this.options.items, this.slides.length); // Đảm bảo số lượng items không vượt quá số lượng slide thực tế
+            this.prevBtn = this.container.querySelector('.slidezy-prev');
+            this.nextBtn = this.container.querySelector('.slidezy-next');
+            this.dots = this.container.querySelectorAll('.slidezy-dot');
+        }
+
         // Khởi tạo
         _init() {
+            if(this.options.loop) {
+                this._setupCloneSlides(); // Thiết lập các slide clone để tạo hiệu ứng loop mượt mà
+                this.index = this.options.items; // Bắt đầu từ slide đầu tiên (sau khi đã thêm clone)
+            }
+
+            this._setSlidesStyle(); // Thiết lập style cho các slide dựa trên số lượng items
+
+            this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
             this.bindEvents();
             this.update();// Cập nhật vị trí slider theo index hiện tại
+            
             if(this.options.autoplay) {
                 this.startAutoplay();
             }
 
+            // Thêm sự kiện resize để cập nhật lại slider khi kích thước cửa sổ thay đổi
+            // Tránh tình gây lag trang slider bị lệch khi thay đổi kích 
             let resizeTimeout;
-            window.addEventListener('resize', () => {
-                clearTimeout(resizeTimeout);    
+            this.resizeHandler = () => {
+                clearTimeout(resizeTimeout);
                 resizeTimeout = setTimeout(() => {
+                    this._setSlidesStyle(); // Cập nhật lại style cho các slide khi kích thước thay đổi
                     this.update();
                 }, 100);
-            });
+            }
+
+            window.addEventListener('resize', this.resizeHandler);
         }
 
         // Gắn (attach) sự kiện cho các nút điều khiển
         bindEvents() {
-            this.prevBtn?.addEventListener('click', () => this.prevSlide())
-            this.nextBtn?.addEventListener('click', () => this.nextSlide()) ;
+            this.handlerPrev = () => this.prevSlide();
+            this.handlerNext = () => this.nextSlide();
+
+            this.prevBtn?.addEventListener('click', this.handlerPrev) ;
+            this.nextBtn?.addEventListener('click', this.handlerNext) ;
 
             this.dots.forEach((dot,index) => {
-                dot.addEventListener('click', () => {
+                const handler = () => {
                     if(this.options.loop) {
                         this.goToSlide(index + this.options.items); // Điều chỉnh index để phù hợp với slide clone
                     } else {   
                         this.goToSlide(index);
                     }
+
                 }
-            )
+                this.dotHandlers.push(handler);
+                dot.addEventListener('click', handler);
             })
 
-            if(this.options.loop){
-                this.track.addEventListener('transitionend', () => {
-                    const items = this.options.items;
-                    const totalSlides = this.slides.length;
 
-                    // Nếu đang ở clone cuối cùng (slide đầu tiên), chuyển về slide đầu tiên
-                    if(this.index >= totalSlides - items) {
-                        this.track.style.transition = 'none';
-                        this.index = items; // Slide đầu tiên (sau khi đã thêm clone)
-                        this.update();
-                        setTimeout(() => {
-                            this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
-                        });
-                    }
+            this.transitionEndHandler = (e) => {
+                if(e.propertyName !== 'transform') return; // Chỉ xử lý khi transition kết thúc trên transform
+                this.isAnimating = false; // Đánh dấu quá trình chuyển đổi đã kết thúc
+    
+                if(!this.options.loop) return; // Nếu không loop, không cần xử lý gì thêm
+                const items = this.options.items;
+                const totalSlides = this.slides.length;
+    
+                // Nếu đang ở clone cuối cùng (slide đầu tiên), chuyển về slide đầu tiên
+                if(this.index >= totalSlides - items) {
+                    this.track.style.transition = 'none';
+                    this.index = items; // Slide đầu tiên (sau khi đã thêm clone)
+                    this.update();
+                    setTimeout(() => {
+                        this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
+                    },0);
+                }
+    
+                // Nếu đang ở clone đầu tiên (slide cuối cùng), chuyển về slide cuối cùng
+                if(this.index < items) {
+                    this.track.style.transition = 'none';
+                    this.index = totalSlides - (items * 2); // Slide cuối cùng (sau khi đã thêm clone)
+                    this.update();
+                    setTimeout(() => {
+                        this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
+                    },0);
+                }
 
-                    // Nếu đang ở clone đầu tiên (slide cuối cùng), chuyển về slide cuối cùng
-                    if(this.index < items) {
-                        this.track.style.transition = 'none';
-                        this.index = totalSlides - (items * 2); // Slide cuối cùng (sau khi đã thêm clone)
-                        this.update();
-                        setTimeout(() => {
-                            this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
-                        });
-                    }
-                });
             }
+
+            this.track.addEventListener('transitionend', this.transitionEndHandler);
         }
 
+        // Thiết lập style cho các slide
         _setSlidesStyle() {
             const percent = 100 / this.options.items;
             this.track.style.display = 'flex';
@@ -190,18 +220,24 @@
             const items = this.options.items;
             const slideArray = Array.from(this.slides);
 
+            const fragmentStart = document.createDocumentFragment();
+            const fragmentEnd = document.createDocumentFragment();
+
             // Clone cuối đưa lên đầu
             for(let i = slideArray.length - items; i < slideArray.length; i++) {
                 const clone = slideArray[i].cloneNode(true);
-                this.track.insertBefore(clone, this.slides[0]);
+                fragmentStart.appendChild(clone);
             }
 
             
             // Clone đầu đưa xuống cuối
             for(let i = 0; i < items; i++) {
                 const clone = slideArray[i].cloneNode(true);
-                this.track.appendChild(clone);
+                fragmentEnd.appendChild(clone);
             }
+
+            this.track.insertBefore(fragmentStart, this.slides[0]);
+            this.track.appendChild(fragmentEnd);
 
             // Cập nhật lại danh sách slide sau khi thêm clone
             this.slides = this.container.querySelectorAll('.slidezy-slide');
@@ -212,30 +248,56 @@
 
         // Đi đến slide tiếp theo
         nextSlide() {
+            if(this.isAnimating) return; // Nếu đang trong quá trình chuyển đổi, không làm gì
             const maxIndex = this.slides.length - this.options.items;
             if(!this.options.loop && this.index >= maxIndex) return; 
             // Nếu không loop và đang ở slide cuối thì dừng lại
-            this.index++;
+            this.isAnimating = true; // Đánh dấu đang trong quá trình chuyển đổi
+            
+            if(this.options.loop) {
+                this.index += this.options.step;
+            } else {
+                this.index = Math.min(this.index + this.options.step, maxIndex); // Không vượt quá slide cuối cùng
+            }
             this.update();
         }
 
         // Đi đến slide trước đó
         prevSlide() {
-            if(!this.options.loop && this.index <= 0) return; // Nếu đang ở slide đầu tiên và loop, không làm gì
-            this.index--;
+            if(this.isAnimating) return; // Nếu đang trong quá trình chuyển đổi, không làm gì
+            if(!this.options.loop && this.index <= 0) return;   // Nếu không loop và đang ở slide đầu tiên thì dừng lại
+            this.isAnimating = true; // Đánh dấu đang trong quá trình chuyển đổi
+            if(this.options.loop) {
+                this.index -= this.options.step;
+            } else {
+                this.index = Math.max(this.index - this.options.step, 0); // Không vượt quá slide đầu tiên
+            }
             this.update(); 
         }
 
         // Đi đến slide cụ thể
         goToSlide(index) {
-            if(index >= 0 && index < this.slides.length) {
-                this.index = index;
-                this.update();
+            if(this.isAnimating) return; // Nếu đang trong quá trình chuyển đổi, không làm gì
+            this.isAnimating = true; // Đánh dấu đang trong quá trình chuyển đổi
+
+            if(this.options.loop) {
+                if(index >= 0 && index < this.slides.length) {
+                    this.index = index;
+                    this.update();
+                }
+            } else 
+            {
+                const maxIndex = this.slides.length - this.options.items;
+                if(index >= 0 && index <= maxIndex) {
+                    this.index = index;
+                    this.update();
+                }
             }
         }
 
         // Tự động chạy slide
         startAutoplay() {
+            this.stopAutoplay(); // Đảm bảo không có timer nào đang chạy trước khi bắt đầu timer mới
             if(this.options.autoplay) {
                 this.timer = setInterval(() => this.nextSlide(), this.options.slideDuration);
             }
@@ -244,8 +306,22 @@
         // Dừng tự động chạy slide
         stopAutoplay() {
             clearInterval(this.timer);
+            this.timer = null;
         }
-            
+
+        destroy() { 
+            // Xóa tất cả các sự kiện đã gắn
+            this.prevBtn?.removeEventListener('click', this.handlerPrev);
+            this.nextBtn?.removeEventListener('click', this.handlerNext);
+            this.dots.forEach((dot,index) => {
+                dot.removeEventListener('click', this.handlerDots[index]);
+            }) ;
+            this.track.removeEventListener('transitionend', this.transitionEndHandler);
+            window.removeEventListener('resize', this.resizeHandler);
+
+            // Dừng autoplay nếu đang chạy
+            this.stopAutoplay();
+        }   
     }
 
 
@@ -254,5 +330,6 @@
         transitionDuration: 600,
         autoplay: false,
         loop: true,
-        items:3
+        items:3,
+        step:2
     });
