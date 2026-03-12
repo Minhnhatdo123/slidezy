@@ -446,7 +446,7 @@
         items:1,
         step:1,
         nav:true,
-        control:true,
+        control:false,
         controlText : ["<" , ">"],
         prevButton : ".slide-prev",
         nextButton : ".slide-next"
