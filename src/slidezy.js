@@ -73,12 +73,12 @@
                 const prevBtn = document.createElement('button');
                 prevBtn.classList.add('slidezy-prev');
                 prevBtn.innerHTML = 
-                this.options.controlText?.[0] ?? '&#10094;'; // Biểu tượng mũi tên trái
+                this.options.controlText?.[0] || '&#10094;'; // Biểu tượng mũi tên trái
     
                 const nextBtn = document.createElement('button');
                 nextBtn.classList.add('slidezy-next');
                 nextBtn.innerHTML = 
-                this.options.controlText?.[1] ?? '&#10095;'; // Biểu tượng mũi tên phải
+                this.options.controlText?.[1] || '&#10095;'; // Biểu tượng mũi tên phải
     
                 content.appendChild(prevBtn);
                 content.appendChild(nextBtn);
@@ -443,8 +443,8 @@
         transitionDuration: 600,
         autoplay: false,
         loop: true,
-        items:1,
-        step:1,
+        items:3,
+        step:3,
         nav:true,
         control:false,
         controlText : ["<" , ">"],
