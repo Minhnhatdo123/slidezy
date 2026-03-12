@@ -15,6 +15,9 @@
                 step:null, // Số lượng slide di chuyển mỗi lần
                 nav:true, // Hiển thị navigation (dot) hay không
                 control: true, // Hiển thị nút điều khiển Prev/Next hay không
+                controlText : ["<" , ">"],
+                prevButton : null,
+                nextButton : null  
             }, options);                                                    
 
             this.options.step ??= this.options.items; // Nếu step không được cung cấp, mặc định bằng số lượng items
@@ -69,11 +72,13 @@
             if(this.options.control) {
                 const prevBtn = document.createElement('button');
                 prevBtn.classList.add('slidezy-prev');
-                prevBtn.innerHTML = '&#10094;'; // Biểu tượng mũi tên trái
+                prevBtn.innerHTML = 
+                this.options.controlText?.[0] ?? '&#10094;'; // Biểu tượng mũi tên trái
     
                 const nextBtn = document.createElement('button');
                 nextBtn.classList.add('slidezy-next');
-                nextBtn.innerHTML = '&#10095;'; // Biểu tượng mũi tên phải
+                nextBtn.innerHTML = 
+                this.options.controlText?.[1] ?? '&#10095;'; // Biểu tượng mũi tên phải
     
                 content.appendChild(prevBtn);
                 content.appendChild(nextBtn);
@@ -122,8 +127,11 @@
             // Đảm số step không vượt quá số lượng slide thực tế
             this.options.step = Math.min(this.options.step , this.realSlidesCount)
 
-            this.prevBtn = this.container.querySelector('.slidezy-prev');
-            this.nextBtn = this.container.querySelector('.slidezy-next');
+            this.prevBtn = (this.options.prevButton && document.querySelector(this.options.prevButton)) 
+                            || this.container.querySelector('.slidezy-prev');
+
+            this.nextBtn = (this.options.nextButton && document.querySelector(this.options.nextButton)) 
+                            ||  this.container.querySelector('.slidezy-next');
             this.dots = this.container.querySelectorAll('.slidezy-dot');
         }
 
@@ -364,8 +372,8 @@
             }
 
             if(this.index <= 0) return;
-            this.index = Math.max(this.index - this.options.step , 0)
             this.isAnimating = true;
+            this.index = Math.max(this.index - this.options.step , 0)
             this.update(); 
         }
 
@@ -439,4 +447,7 @@
         step:1,
         nav:true,
         control:true,
+        controlText : ["<" , ">"],
+        prevButton : ".slide-prev",
+        nextButton : ".slide-next"
     });
