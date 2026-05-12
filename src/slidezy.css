@@ -16,7 +16,6 @@
 }
 
 .slidezy-slide{
-    flex-shrink: 0;
     font-size: 18px;
     text-align: center;
     padding: 30px 0;

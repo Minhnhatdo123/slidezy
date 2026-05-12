@@ -104,15 +104,13 @@
 
         _calculateDots(slideCount)
         {
+            if(slideCount <= this.options.items) return 1;
             // Tính số lượng dot cần tạo dựa trên số lượng slide và số lượng items hiển thị cùng lúc
-                if(this.options.loop)
-                {
-                    return Math.ceil(slideCount / this.options.step);
-                } 
-
-                if(slideCount <= this.options.items) return 1;
-
-                return Math.ceil((slideCount - this.options.items) / this.options.step) + 1
+            if(this.options.loop)
+            {
+                return Math.ceil(slideCount / this.options.step);
+            } 
+            return Math.ceil((slideCount - this.options.items) / this.options.step) + 1
         }
 
         // Lưu lại DOM element để tái sử dụng
@@ -123,7 +121,7 @@
 
             // Đảm bảo số lượng items không vượt quá số lượng slide thực tế
             this.options.items = Math.min(this.options.items, this.realSlidesCount); // Đảm bảo số lượng items không vượt quá số lượng slide thực tế
-            
+             
             // Đảm số step không vượt quá số lượng slide thực tế
             this.options.step = Math.min(this.options.step , this.realSlidesCount)
 
@@ -133,6 +131,11 @@
             this.nextBtn = (this.options.nextButton && document.querySelector(this.options.nextButton)) 
                             ||  this.container.querySelector('.slidezy-next');
             this.dots = this.container.querySelectorAll('.slidezy-dot');
+            
+            if(this.realSlidesCount <= this.options.items) {
+                this.options.autoplay = false;
+                this.options.loop = false;
+            }
         }
 
 
@@ -184,8 +187,19 @@
             return Math.max(0,Math.min(index,maxIndex));
         }
 
+        
         // Gắn (attach) sự kiện cho các nút điều khiển
         bindEvents() {
+            if(this.realSlidesCount <= this.options.items){
+                this.prevBtn?.style && (this.prevBtn.style.display = 'none');
+                this.nextBtn?.style && (this.nextBtn.style.display = 'none');
+                const nav = this.container.querySelector('.slidezy-nav');
+                if(nav) {
+                    nav.style.display = 'none';
+                }   
+                return;
+            }; // Nếu số lượng slide thực tế nhỏ hơn hoặc bằng số lượng items hiển thị, không cần gắn sự kiện
+
             this.handlerPrev = () => this.prevSlide();
             this.handlerNext = () => this.nextSlide();
 
@@ -225,6 +239,9 @@
                     this.track.style.transition = 'none';
                     this.index = cloneCount; // Slide thật đầu tiên (sau khi đã thêm clone)
                     this.update();
+                    // Thời điểm browser cập nhật lại giao diện lên màn hình
+                    // Lần 1 : apply transition , translateX mới
+                    // Lần 2: bật transition lại để có hiệu ứn
                     requestAnimationFrame(() => {
                         requestAnimationFrame(() => {
                             this.track.style.transition = `transform ${this.options.transitionDuration}ms ease`;
@@ -251,7 +268,7 @@
             this.track.addEventListener('transitionend', this.transitionEndHandler);
         }
 
-        // Thiết lập style cho các slide
+        // Thiết lập style cho các slide 
         _setSlidesStyle() {
             const percent = 100 / this.options.items;
             this.track.style.display = 'flex';
@@ -340,7 +357,7 @@
 
         // Đi đến slide tiếp theo
         nextSlide() {
-            if(this.isAnimating) return; // Nếu đang trong quá trình chuyển đổi, không làm gì
+            if(this.isAnimating) return; // Chặn spam click - tránh double click 
             this._handlerUserInteraction(); // Xử lý tương tác của người dùng để dừng và khởi động lại autoplay nếu cần
             
             if(this.options.loop)
@@ -444,10 +461,10 @@
         autoplay: false,
         loop: true,
         items:3,
-        step:3,
+        step:1,
         nav:true,
-        control:false,
-        controlText : ["<" , ">"],
-        prevButton : ".slide-prev",
-        nextButton : ".slide-next"
+        control:true,
+        // controlText : ["<" , ">"],
+        // prevButton : ".slide-prev",
+        // nextButton : ".slide-next"
     });
